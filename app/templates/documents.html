@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+
+{% block page_title %}{{ "Registros Medicos" if show_records else "Documentos" }}{% endblock %}
+
+{% block content %}
+{% if show_records %}
+<section class="panel">
+  <form class="filter-row" method="get">
+    <input class="form-control" name="patient" placeholder="Paciente" value="{{ request.args.get('patient', '') }}">
+    <input class="form-control" name="hospital" placeholder="Hospital" value="{{ request.args.get('hospital', '') }}">
+    <input class="form-control" name="icd" placeholder="CID" value="{{ request.args.get('icd', '') }}">
+    <input class="form-control" name="diagnosis" placeholder="Diagnostico" value="{{ request.args.get('diagnosis', '') }}">
+    <button class="btn btn-outline-dark" type="submit"><i data-lucide="search"></i></button>
+    <a class="btn btn-outline-secondary" href="{{ url_for('crud.export_csv', **request.args) }}"><i data-lucide="file-text"></i>CSV</a>
+    <a class="btn btn-outline-secondary" href="{{ url_for('crud.export_xlsx', **request.args) }}"><i data-lucide="sheet"></i>XLSX</a>
+  </form>
+  <div class="table-responsive">
+    <table class="table align-middle data-table">
+      <thead>
+        <tr>
+          <th>Hospital</th>
+          <th>Paciente</th>
+          <th>Conta</th>
+          <th>Nascimento</th>
+          <th>Convenio</th>
+          <th>CID</th>
+          <th>Diagnostico</th>
+          <th>Valor devido</th>
+          <th>Confianca</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for record in records %}
+        <tr>
+          <td>{{ record.hospital_name or "-" }}</td>
+          <td>{{ record.patient_name or "Nao identificado" }}</td>
+          <td>{{ record.guarantor_no or record.mrn or "-" }}</td>
+          <td>{{ record.dob or "-" }}</td>
+          <td>{{ record.primary_insurance or "-" }}</td>
+          <td>{{ record.icd10_code or "-" }}</td>
+          <td>{{ record.primary_diagnosis or record.admission_diagnosis or "-" }}</td>
+          <td>
+            {% if record.patient_amount_due is not none %}
+              ${{ "%.2f"|format(record.patient_amount_due) }}
+            {% elif record.total_billed_charges is not none %}
+              ${{ "%.2f"|format(record.total_billed_charges) }}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+          <td>{{ "%.0f"|format((record.extraction_confidence or 0) * 100) }}%</td>
+          <td><span class="badge-soft">{{ record.extraction_status }}</span></td>
+          <td class="text-end">
+            <div class="d-inline-flex gap-2">
+              {% if record.document_id %}
+                <a class="icon-link" href="{{ url_for('document.detail', document_id=record.document_id) }}"><i data-lucide="eye"></i></a>
+              {% endif %}
+              <a class="icon-link" href="{{ url_for('crud.edit_record', record_id=record.id) }}"><i data-lucide="pencil"></i></a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="11" class="text-center text-muted py-5">Nenhum registro encontrado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% else %}
+<section class="panel">
+  <form class="filter-row" method="get">
+    <input class="form-control" name="q" placeholder="Pesquisar arquivo" value="{{ request.args.get('q', '') }}">
+    <select class="form-select" name="status">
+      <option value="">Todos os status</option>
+      {% for status in ["pending", "processed", "error"] %}
+        <option value="{{ status }}" {% if request.args.get('status') == status %}selected{% endif %}>{{ status }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn btn-outline-dark" type="submit"><i data-lucide="search"></i></button>
+  </form>
+  <div class="table-responsive">
+    <table class="table align-middle data-table">
+      <thead>
+        <tr>
+          <th>Arquivo</th>
+          <th>Tipo</th>
+          <th>Status</th>
+          <th>Confianca</th>
+          <th>Criado em</th>
+          <th class="action-column">Visualizar</th>
+          <th class="action-column">Correcao IA</th>
+          <th class="action-column">Detalhes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for document in documents %}
+        <tr>
+          <td><a class="table-file-link" href="{{ url_for('document.detail', document_id=document.id) }}">{{ document.source_file_name }}</a></td>
+          <td>{{ document.file_type|upper }}</td>
+          <td><span class="badge-soft">{{ document.status }}</span></td>
+          <td>{{ "%.0f"|format((document.extraction_confidence or 0) * 100) }}%</td>
+          <td>{{ document.created_at.strftime("%d/%m/%Y %H:%M") }}</td>
+          <td class="action-column">
+            <a
+              class="icon-link"
+              href="{{ url_for('document.preview', document_id=document.id) }}"
+              data-document-preview
+              data-preview-src="{{ url_for('document.preview', document_id=document.id) }}"
+              data-preview-title="{{ document.source_file_name }}"
+              title="Visualizar documento"
+              aria-label="Visualizar {{ document.source_file_name }}"
+            ><i data-lucide="eye"></i></a>
+          </td>
+          <td class="action-column">
+            <form class="document-action-form" method="post" action="{{ url_for('document.ai_correction', document_id=document.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="icon-link icon-button-link" type="submit" title="Corrigir com IA" aria-label="Corrigir {{ document.source_file_name }} com IA">
+                <i data-lucide="sparkles"></i>
+              </button>
+            </form>
+          </td>
+          <td class="action-column">
+            <a class="icon-link" href="{{ url_for('document.detail', document_id=document.id) }}" title="Abrir detalhes" aria-label="Abrir detalhes de {{ document.source_file_name }}"><i data-lucide="file-search"></i></a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center text-muted py-5">Nenhum documento importado.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<div class="document-preview-overlay" data-document-preview-modal hidden>
+  <div class="document-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="documentPreviewTitle">
+    <div class="document-preview-header">
+      <h2 id="documentPreviewTitle" data-preview-title-target>Documento</h2>
+      <div class="document-preview-actions">
+        <a class="icon-link" href="#" target="_blank" rel="noopener" data-preview-open title="Abrir em nova aba" aria-label="Abrir documento em nova aba">
+          <i data-lucide="external-link"></i>
+        </a>
+        <button class="icon-link icon-button-link" type="button" data-preview-close title="Fechar" aria-label="Fechar visualizacao">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+    </div>
+    <div class="document-preview-canvas">
+      <img src="" alt="" data-preview-image>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const badges = document.querySelectorAll(".badge-soft");
+    const hasPending = Array.from(badges).some(badge => badge.textContent.trim().toLowerCase() === "pending");
+    if (hasPending) {
+      setTimeout(() => {
+        window.location.reload();
+      }, 5000);
+    }
+
+    const modal = document.querySelector("[data-document-preview-modal]");
+    if (!modal) {
+      return;
+    }
+
+    const image = modal.querySelector("[data-preview-image]");
+    const title = modal.querySelector("[data-preview-title-target]");
+    const openLink = modal.querySelector("[data-preview-open]");
+
+    function openPreview(link) {
+      const src = link.dataset.previewSrc || link.href;
+      const label = link.dataset.previewTitle || "Documento";
+      image.src = src;
+      image.alt = label;
+      title.textContent = label;
+      openLink.href = src;
+      modal.hidden = false;
+      document.body.classList.add("document-preview-open");
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+    }
+
+    function closePreview() {
+      modal.hidden = true;
+      image.removeAttribute("src");
+      image.alt = "";
+      document.body.classList.remove("document-preview-open");
+    }
+
+    document.querySelectorAll("[data-document-preview]").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        event.preventDefault();
+        openPreview(link);
+      });
+    });
+
+    modal.querySelector("[data-preview-close]").addEventListener("click", closePreview);
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        closePreview();
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !modal.hidden) {
+        closePreview();
+      }
+    });
+  });
+</script>
+{% endblock %}

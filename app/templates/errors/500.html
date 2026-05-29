@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block page_title %}Erro interno{% endblock %}
+
+{% block content %}
+<section class="panel empty-page">
+  <h2>{{ message or "Nao foi possivel concluir a operacao." }}</h2>
+  <a class="btn btn-gold" href="{{ url_for('dashboard.dashboard') }}">Voltar ao dashboard</a>
+</section>
+{% endblock %}

@@ -1,0 +1,51 @@
+services:
+  web:
+    build: .
+    image: medextract-ai:latest
+    env_file:
+      - .env
+    environment:
+      FLASK_ENV: production
+      DATABASE_URL: sqlite:////app/data/medextract_ai.db
+      UPLOAD_ORIGINAL_FOLDER: /app/uploads/original
+      UPLOAD_PROCESSED_FOLDER: /tmp/medextract-processed
+      PADDLE_PDX_CACHE_HOME: /app/.paddlex-cache
+      ENABLE_BACKGROUND_WORKER: "false"
+      PORT: "5000"
+      WEB_CONCURRENCY: "1"
+      WEB_THREADS: "4"
+      WEB_TIMEOUT: "240"
+    ports:
+      - "5000:5000"
+    volumes:
+      - medextract_data:/app/data
+      - medextract_uploads:/app/uploads
+      - medextract_paddlex_cache:/app/.paddlex-cache
+    restart: unless-stopped
+    depends_on:
+      - worker
+
+  worker:
+    image: medextract-ai:latest
+    build: .
+    env_file:
+      - .env
+    environment:
+      FLASK_ENV: production
+      DATABASE_URL: sqlite:////app/data/medextract_ai.db
+      UPLOAD_ORIGINAL_FOLDER: /app/uploads/original
+      UPLOAD_PROCESSED_FOLDER: /tmp/medextract-processed
+      PADDLE_PDX_CACHE_HOME: /app/.paddlex-cache
+      ENABLE_BACKGROUND_WORKER: "true"
+      BACKGROUND_WORKER_POLL_SECONDS: "5"
+    command: ["worker"]
+    volumes:
+      - medextract_data:/app/data
+      - medextract_uploads:/app/uploads
+      - medextract_paddlex_cache:/app/.paddlex-cache
+    restart: unless-stopped
+
+volumes:
+  medextract_data:
+  medextract_uploads:
+  medextract_paddlex_cache:

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block page_title %}Importar Documentos{% endblock %}
+
+{% block content %}
+<section class="content-narrow">
+  <div class="panel upload-panel">
+    <form method="post" enctype="multipart/form-data" id="uploadForm">
+      {{ form.hidden_tag() }}
+      <label class="upload-dropzone" for="{{ form.document.id }}">
+        <i data-lucide="file-up"></i>
+        <span>PDF, JPG, JPEG ou PNG</span>
+        {{ form.document(class="form-control", accept=".pdf,.jpg,.jpeg,.png", multiple=True) }}
+      </label>
+      {% if form.document.errors %}
+        <div class="text-danger small mt-2">{{ form.document.errors[0] }}</div>
+      {% endif %}
+      <div class="d-flex justify-content-end mt-4">
+        <button class="btn btn-gold" type="submit">
+          <i data-lucide="scan-line"></i>
+          Processar documentos
+        </button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}

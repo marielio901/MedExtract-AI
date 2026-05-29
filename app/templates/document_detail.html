@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block page_title %}Detalhes do Documento{% endblock %}
+
+{% block content %}
+<section class="detail-grid">
+  <div class="panel">
+    <div class="panel-heading">
+      <h2>{{ document.source_file_name }}</h2>
+      <span class="badge-soft">{{ document.status }}</span>
+    </div>
+    <dl class="detail-list">
+      <div><dt>Tipo</dt><dd>{{ document.file_type|upper }}</dd></div>
+      <div><dt>Tamanho</dt><dd>{{ document.file_size }} bytes</dd></div>
+      <div><dt>Confianca</dt><dd>{{ "%.0f"|format((document.extraction_confidence or 0) * 100) }}%</dd></div>
+      <div><dt>Criado em</dt><dd>{{ document.created_at.strftime("%d/%m/%Y %H:%M") }}</dd></div>
+      {% if document.error_message %}
+        <div><dt>Erro</dt><dd>{{ document.error_message }}</dd></div>
+      {% endif %}
+    </dl>
+    <form method="post" action="{{ url_for('document.delete', document_id=document.id) }}" onsubmit="return confirm('Excluir este documento?');">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button class="btn btn-outline-danger" type="submit"><i data-lucide="trash-2"></i>Excluir</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    {% if document.medical_record %}
+      {% set record = document.medical_record %}
+      {% set is_billing = record.document_type == "billing_statement" or record.billing_items or record.patient_amount_due is not none %}
+      <div class="panel-heading">
+        <h2>{{ "Conta hospitalar" if is_billing else "Registro medico" }}</h2>
+        <a class="btn btn-outline-dark btn-sm" href="{{ url_for('crud.edit_record', record_id=record.id) }}"><i data-lucide="pencil"></i>Editar</a>
+      </div>
+      <dl class="detail-list">
+        <div><dt>Paciente</dt><dd>{{ record.patient_name or "-" }}</dd></div>
+        <div><dt>Hospital</dt><dd>{{ record.hospital_name or "-" }}</dd></div>
+        <div><dt>Endereco</dt><dd>{{ record.hospital_address or "-" }}</dd></div>
+        <div><dt>NPI</dt><dd>{{ record.hospital_npi or "-" }}</dd></div>
+        <div><dt>Telefone</dt><dd>{{ record.hospital_phone or "-" }}</dd></div>
+        <div><dt>MRN</dt><dd>{{ record.mrn or "-" }}</dd></div>
+        <div><dt>Conta</dt><dd>{{ record.guarantor_no or "-" }}</dd></div>
+        <div><dt>DOB</dt><dd>{{ record.dob or "-" }}</dd></div>
+        <div><dt>Data statement</dt><dd>{{ record.statement_date or "-" }}</dd></div>
+        <div><dt>Convenio</dt><dd>{{ record.primary_insurance or "-" }}</dd></div>
+        <div><dt>Grupo</dt><dd>{{ record.group_no or "-" }}</dd></div>
+        <div><dt>CID-10</dt><dd>{{ record.icd10_code or "-" }}</dd></div>
+        <div><dt>Diagnostico</dt><dd>{{ record.primary_diagnosis or record.admission_diagnosis or "-" }}</dd></div>
+        <div><dt>Total cobrado</dt><dd>{% if record.total_billed_charges is not none %}${{ "%.2f"|format(record.total_billed_charges) }}{% else %}-{% endif %}</dd></div>
+        <div><dt>Ajustes seguro</dt><dd>{% if record.insurance_adjustments is not none %}${{ "%.2f"|format(record.insurance_adjustments) }}{% else %}-{% endif %}</dd></div>
+        <div><dt>Valor devido</dt><dd>{% if record.patient_amount_due is not none %}${{ "%.2f"|format(record.patient_amount_due) }}{% else %}-{% endif %}</dd></div>
+        {% if not is_billing %}
+          <div><dt>Medicacoes</dt><dd>{{ record.discharge_medications or "-" }}</dd></div>
+          <div><dt>Instrucoes</dt><dd>{{ record.discharge_instructions or "-" }}</dd></div>
+          <div><dt>Medico</dt><dd>{{ record.physician_name or "-" }}</dd></div>
+        {% endif %}
+      </dl>
+    {% else %}
+      <p class="empty-state">Nenhum registro extraido.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% if document.medical_record and document.medical_record.billing_items %}
+<section class="panel mt-4">
+  <div class="panel-heading">
+    <h2>Itens cobrados</h2>
+  </div>
+  <div class="table-responsive">
+    <table class="table align-middle data-table">
+      <thead>
+        <tr>
+          <th>Data</th>
+          <th>CPT</th>
+          <th>Descricao</th>
+          <th class="text-end">Valor</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in document.medical_record.billing_items %}
+          <tr>
+            <td>{{ item.date or item["date"] or "-" }}</td>
+            <td>{{ item.cpt or item["cpt"] or "-" }}</td>
+            <td>{{ item.description or item["description"] or "-" }}</td>
+            <td class="text-end">
+              {% set charge = item.charges if item.charges is defined else item["charges"] %}
+              {% if charge is not none %}${{ "%.2f"|format(charge) }}{% else %}-{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<section class="panel mt-4">
+  <div class="panel-heading">
+    <h2>Texto OCR bruto</h2>
+  </div>
+  <pre class="ocr-box">{{ document.raw_ocr_text or "Sem texto OCR salvo." }}</pre>
+</section>
+{% endblock %}

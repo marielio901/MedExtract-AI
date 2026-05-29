@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+
+{% block page_title %}Nao encontrado{% endblock %}
+
+{% block content %}
+<section class="panel empty-page">
+  <h2>Recurso nao encontrado</h2>
+  <a class="btn btn-gold" href="{{ url_for('dashboard.dashboard') }}">Voltar ao dashboard</a>
+</section>
+{% endblock %}

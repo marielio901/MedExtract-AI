@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<section class="dashboard-layout">
+  <div class="dashboard-main">
+    <section class="dashboard-hero">
+      <div class="hero-copy">
+        <span class="hero-kicker">Visao geral do pipeline</span>
+        <h2>Bem-vindo de volta</h2>
+        <p>{{ summary.total_documents }} documentos acompanhados, {{ summary.processed_documents }} processados e {{ summary.pending_documents }} aguardando analise.</p>
+        <div class="hero-actions">
+          <a class="btn btn-light" href="{{ url_for('upload.upload_document') }}"><i data-lucide="file-up"></i>Importar documento</a>
+          <a class="btn btn-hero-outline" href="{{ url_for('crud.list_records', status='needs_review') }}"><i data-lucide="scan-search"></i>Revisar pendencias</a>
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="hero-orbit">
+          <i data-lucide="heart-pulse"></i>
+        </div>
+        <span><i data-lucide="file-check-2"></i>{{ summary.processed_documents }}</span>
+        <span><i data-lucide="shield-check"></i>{{ "%.0f"|format(summary.average_confidence * 100) }}%</span>
+      </div>
+    </section>
+
+    <div class="metric-grid">
+      <article class="metric-card">
+        <span class="metric-icon"><i data-lucide="files"></i></span>
+        <div>
+          <span>Total</span>
+          <strong>{{ summary.total_documents }}</strong>
+          <small>documentos importados</small>
+        </div>
+      </article>
+      <article class="metric-card">
+        <span class="metric-icon"><i data-lucide="check-circle-2"></i></span>
+        <div>
+          <span>Processados</span>
+          <strong>{{ summary.processed_documents }}</strong>
+          <small>OCR e extracao finalizados</small>
+        </div>
+      </article>
+      <article class="metric-card">
+        <span class="metric-icon"><i data-lucide="clock-3"></i></span>
+        <div>
+          <span>Pendentes</span>
+          <strong>{{ summary.pending_documents }}</strong>
+          <small>aguardando pipeline</small>
+        </div>
+      </article>
+      <article class="metric-card metric-danger">
+        <span class="metric-icon"><i data-lucide="triangle-alert"></i></span>
+        <div>
+          <span>Com erro</span>
+          <strong>{{ summary.error_documents }}</strong>
+          <small>requerem atencao</small>
+        </div>
+      </article>
+      <article class="metric-card">
+        <span class="metric-icon"><i data-lucide="users"></i></span>
+        <div>
+          <span>Pacientes</span>
+          <strong>{{ summary.unique_patients }}</strong>
+          <small>pacientes unicos</small>
+        </div>
+      </article>
+      <article class="metric-card">
+        <span class="metric-icon"><i data-lucide="hospital"></i></span>
+        <div>
+          <span>Hospitais</span>
+          <strong>{{ summary.hospitals_found }}</strong>
+          <small>origens encontradas</small>
+        </div>
+      </article>
+      <article class="metric-card">
+        <span class="metric-icon"><i data-lucide="sparkles"></i></span>
+        <div>
+          <span>Confianca IA</span>
+          <strong>{{ "%.0f"|format(summary.average_confidence * 100) }}%</strong>
+          <small>media validada</small>
+        </div>
+      </article>
+    </div>
+
+    <div class="chart-grid">
+      <section class="panel chart-card chart-month">
+        <div class="panel-heading">
+          <h2>Documentos por mes</h2>
+        </div>
+        <canvas id="documentsByMonth"></canvas>
+      </section>
+      <section class="panel chart-card chart-status">
+        <div class="panel-heading">
+          <h2>Status de processamento</h2>
+        </div>
+        <canvas id="statusChart"></canvas>
+      </section>
+      <section class="panel chart-card chart-half">
+        <div class="panel-heading">
+          <h2>Documentos por hospital</h2>
+        </div>
+        <canvas id="hospitalChart"></canvas>
+      </section>
+      <section class="panel chart-card chart-half">
+        <div class="panel-heading">
+          <h2>Diagnosticos frequentes</h2>
+        </div>
+        <canvas id="diagnosisChart"></canvas>
+      </section>
+      <section class="panel chart-card chart-wide">
+        <div class="panel-heading">
+          <h2>Procedimentos mais cobrados</h2>
+        </div>
+        <canvas id="medicationChart"></canvas>
+      </section>
+    </div>
+  </div>
+
+  <aside class="activity-panel">
+    <div class="panel-heading">
+      <h2>Atividades recentes</h2>
+    </div>
+    <div class="activity-list">
+      {% for item in recent_activity %}
+        <div class="activity-item">
+          <span class="activity-status status-{{ item.status }}"></span>
+          <div>
+            <strong>{{ item.title }}</strong>
+            <small>{{ item.status }} · {{ item.created_at.strftime("%d/%m/%Y %H:%M") }}</small>
+          </div>
+        </div>
+      {% else %}
+        <p class="empty-state">Nenhum documento importado.</p>
+      {% endfor %}
+    </div>
+
+    <div class="mini-list mt-4">
+      <h3>Top diagnosticos</h3>
+      {% for diagnosis in summary.top_diagnoses %}
+        <div>
+          <span>{{ diagnosis.label }}</span>
+          <strong>{{ diagnosis.count }}</strong>
+        </div>
+      {% else %}
+        <p class="empty-state">Sem dados.</p>
+      {% endfor %}
+    </div>
+  </aside>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.MEDEXTRACT_CHARTS = {{ charts|tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}
