@@ -468,3 +468,4 @@ Antes de publicar:
 ## Fonte dos dados;
 
 - kaggle: https://www.kaggle.com/datasets/devp1866/noisy-medical-document-images-ocr
+- Apresentação youtube: https://youtu.be/466D3f12ejY
